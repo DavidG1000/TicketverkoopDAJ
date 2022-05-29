@@ -72,10 +72,10 @@ def keuze_rij(value_tribune):
     rij_keuze = tkinter.StringVar(ticket)
     rij_keuze.set(options_rij[0])
     optionsbox = OptionMenu(ticket, rij_keuze, *options_rij,
-                            command=keuze_zitplaats) # returns the chosen parameter value_rij and run function keuze_rij
+                            command=keuze_zitplaats) # returns the chosen parameter value_rij and run funct keuze_zitplaats
     optionsbox.place(relx="0.4", rely="0.45")
 
-
+# function choose chair
 def keuze_zitplaats(value_rij):
     # test print chosen row
     print("Dit is de gekozen rij: ",value_rij)
