@@ -8,7 +8,6 @@ from PIL import ImageTk, Image
 
 # make database connection
 import mysql.connector
-
 db = mysql.connector.connect(
     host="localhost",
     user="root",
@@ -17,27 +16,28 @@ db = mysql.connector.connect(
 )
 mycursor = db.cursor()
 
+# declare lists/variables
 options_tribune = []
 options_rij = []
-options_zitplaats = []
+options_stoel = []
+var_tribune = ""
+var_rij = 0
+var_stoel = 0
 
-
-
-# test database connection
+# function test database connection
 def toon_database_stadion():
     mycursor.execute("SELECT PlaatsID,tribune,rij,stoel,reserved,prijsTicket FROM stadion")
     for x in mycursor:
         print(x)
 
-
-# run test
+# run test database connection
 toon_database_stadion()
 
 
 # function choose tribune
 def keuze_tribune():
     # settings text :choose the tribune
-    tribune = Label(ticket, text="Kies de tribune / vak: ")
+    tribune = Label(ticket, text="Kies eerst tribune / vak: ",font=('Helvetica',12))
     tribune.config(bg="DodgerBlue3", fg="white")
     tribune.place(relx="0.1", rely="0.35")
 
@@ -55,16 +55,16 @@ def keuze_tribune():
 
 # function choose row
 def keuze_rij(value_tribune):
-    # changes the chosen parameter value_tribune to the global variabele var_tribune for the row function and print test
+    # changes the chosen parameter value_tribune to the global variabele var_tribune for the row function
     global var_tribune
     var_tribune = value_tribune
-    print("Dit is de gekozen tribune als variable: ", var_tribune)
+
     # gets the free row-data from the chosen tribune from the databank and puts it in a list
     mycursor.execute("SELECT DISTINCT rij FROM stadion WHERE tribune = '" + value_tribune + "' AND reserved = 'Nee'")
     options_rij = list([x for x, in mycursor])
 
     # settings text choose row
-    rij = Label(ticket, text="Geef de rij in:")
+    rij = Label(ticket, text="Kies daarna rij:",font=('Helvetica',12))
     rij.config(bg="DodgerBlue3", fg="white")
     rij.place(relx="0.1", rely="0.45")
 
@@ -72,17 +72,19 @@ def keuze_rij(value_tribune):
     rij_keuze = tkinter.StringVar(ticket)
     rij_keuze.set(options_rij[0])
     optionsbox = OptionMenu(ticket, rij_keuze, *options_rij,
-                            command=keuze_zitplaats) # returns the chosen parameter value_rij and run funct keuze_zitplaats
+                            command=keuze_stoel) # returns the chosen parameter value_rij and run funct. keuze_zitplaats
     optionsbox.place(relx="0.4", rely="0.45")
 
 # function choose chair
-def keuze_zitplaats(value_rij):
-    # test print chosen row
-    print("Dit is de gekozen rij: ",value_rij)
+def keuze_stoel(value_rij):
+    # changes the chosen parameter value_rij to the global variabele var_rij for the chair function
+    global var_rij
+    var_rij = value_rij
+
     # settings text choose chair
-    zitplaats = Label(ticket, text="Kies uw zitplaats:")
-    zitplaats.config(bg="DodgerBlue3", fg="white")
-    zitplaats.place(relx="0.1", rely="0.55")
+    stoel = Label(ticket, text="Kies daarna stoelnummer:",font=('Helvetica',12))
+    stoel.config(bg="DodgerBlue3", fg="white")
+    stoel.place(relx="0.1", rely="0.55")
 
     # gets the free chair-data from the chosen row from the databank and puts it in a list
     query = "SELECT DISTINCT stoel FROM stadion WHERE tribune =%s AND rij=%s AND reserved = 'Nee' ORDER by stoel"
@@ -90,43 +92,56 @@ def keuze_zitplaats(value_rij):
     mycursor.execute(query, waarde)
 
     # settings optionmenu choose chair
-    options_zitplaats = list([x for x, in mycursor])
-    zitplaats_keuze = IntVar()
-    zitplaats_keuze.set(options_zitplaats[0])
-    optionsbox = OptionMenu(ticket, zitplaats_keuze, *options_zitplaats)
+    options_stoel = list([x for x, in mycursor])
+    stoel_keuze = IntVar()
+    stoel_keuze.set(options_stoel[0])
+    optionsbox = OptionMenu(ticket, stoel_keuze, *options_stoel,command=bevestig_keuze_stoel)
     optionsbox.place(relx="0.4", rely="0.55")
 
+def bevestig_keuze_stoel(value_stoel):
+    # changes the chosen parameter value_stoel to the global variabele var_stoel for the order function and print test
+    global var_stoel
+    var_stoel = value_stoel
 
-# clears the entry's
+# restart/clears the entry's : niet in gebruik
 def clear():
-    tribune_keuze.set("Tribune...")
-    rij_keuze.set(0)
-    zitplaats_keuze.set(0)
-    answer.config(text="")
+    ticket.destroy()
 
+# function gets the ticket price and print
+def get_ticket():
+    print("Gekozen tribune",var_tribune)
+    print("Gekozen rij",var_rij)
+    print("Gekozen stoel",var_stoel)
 
-# functie berekening totaalprijs
-def calculate():
-    # numbertickets = int(self.nr_tickets_entry.get())
-    # print(self.tribune_keuze, self.rij_keuze, self.zitplaats_keuze)
-    # checks if options are actually chosen
+    # checks if options are actually chosen else raise error
     try:
-        if tribune_keuze.get() == "Tribune..." or rij_keuze.get() == "Rij..." or zitplaats_keuze.get() == "Zitplaats" \
-                                                                                                          "...":
+        if var_tribune == "" or var_rij == 0 or var_stoel == 0:
             raise ValueError
         else:
             # gets the chosen ticketID and the ticketprice from the database
-            print(tribune_keuze.get(), rij_keuze.get(), zitplaats_keuze.get())
-            query = "SELECT plaatsID,prijsTicket FROM stadion WHERE tribune =%s and rij=%s and stoel=%s"
-            mycursor.execute(query, (tribune_keuze.get(), rij_keuze.get(), zitplaats_keuze.get()))
+            print(var_tribune, var_rij, var_stoel)
+            query = "SELECT plaatsID,prijsTicket,reserved FROM stadion WHERE tribune =%s and rij=%s and stoel=%s"
+            mycursor.execute(query, (var_tribune, var_rij, var_stoel))
             myresult = mycursor.fetchall()
             for x in myresult:
-                prijs = (x[1])
-
-            final = f"Ticketnr: {tribune_keuze.get()}{rij_keuze.get()}{zitplaats_keuze.get()}   Prijs: {prijs} euro."
-            # final = (self.tribune_keuze.get(),self.rij_keuze.get(),self.zitplaats_keuze.get())
-            answer.config(text=final)
-
+                # second check if chair is free
+                if x[2] != "Nee":
+                    final = "Deze stoel is niet vrij"
+                    answer.config(text=final)
+                else:
+                    #gets the price from the db
+                    prijs = (x[1])
+                    final = f"Ticketnr: {var_tribune}{var_rij}{var_stoel}   Prijs: {prijs} euro."
+                    answer.config(text=final)
+                    # popup messagebox are you sure
+                    text_MsgBox = "Ticket "+var_tribune+str(var_rij)+str(var_stoel)+" bestellen"
+                    MsgBox = messagebox.askquestion(text_MsgBox, "Bent u zeker ?")
+                    if MsgBox == 'yes':
+                        # send the ticketorder to the db
+                        query = "UPDATE stadion SET reserved = 'Ja' WHERE tribune =%s and rij=%s and stoel=%s"
+                        mycursor.execute(query, (var_tribune, var_rij, var_stoel))
+                        print("Ticket: ",var_tribune, var_rij, var_stoel," is besteld")
+                        db.commit()
 
     # messagebox foutmelding
     except ValueError:
@@ -134,7 +149,7 @@ def calculate():
 
 
 # configuration ticketorderbox
-ticket = tkinter.Tk()
+ticket = Tk()
 ticket.title("FC Syntra Genk")
 ticket.state("zoomed")
 ticket.config(bg='DodgerBlue2')
@@ -165,27 +180,25 @@ new_stadion_label = Label(ticket, image=new_stadion, bg="DodgerBlue3")
 new_stadion_label.place(x=800, y=270)
 
 
-calculate = Button(ticket, text="Bestel ticket: ", width="20", command=calculate)
-calculate.place(relx="0.1", rely="0.75")
+bestel = Button(ticket, text="Bestel ticket: ", width="20", font=('Helvetica',9), command=get_ticket)
+bestel.place(relx="0.1", rely="0.75")
 
-# clearbutton
-clearbtn = Button(ticket, text="Clear", width="12", command=clear)
-clearbtn.place(relx="0.1", rely="0.85")
+# #clearbutton not in use
+# clearbtn = Button(ticket, text="Clear", width="12",font=('Helvetica',9), command=clear)
+# clearbtn.place(relx="0.1", rely="0.85")
 
 # Ticketprice frame
 frame = Frame(ticket, width=200, height=30, relief="groove", borderwidth=2)
-frame.place(relx="0.4", rely="0.75")
+frame.place(relx="0.4", rely="0.745")
 answer = Label(frame, text="")
 answer.place(relx="0.10", rely="0.10")
-
 
 # start program
 keuze_tribune()
 
 ticket.mainloop()
 
-
-# optional spinbox for number off tickets
+# optional spinbox for number off tickets not in use
 # self.nr_tickets = Label(window, text="Aantal tickets (max. 4 st.)")
 # self.nr_tickets.config(bg="DodgerBlue3", fg="white")
 # self.nr_tickets.place(relx="0.1", rely="0.65")
