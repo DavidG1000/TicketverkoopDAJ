@@ -1,7 +1,18 @@
+# ############################## TICKET PAGE ###################################### #
+# This page is the ticket page from the website FC SYNTRA                           #
+# In this GUI supporters can bye stadion-tickets. Tickets are logged in a database  #
+# Members/supporters can make a selection on tribune, row and chairs.               #
+# Only free chairs are read-in from the db and visualised.                          #
+# ################################################################################# #
+
 # get tkinter module
 import tkinter
 from tkinter import *
 from tkinter import messagebox
+
+
+#from main_login_page import get_id_supp
+#print(get_id_supp())
 
 # get image module
 from PIL import ImageTk, Image
@@ -23,6 +34,8 @@ options_stoel = []
 var_tribune = ""
 var_rij = 0
 var_stoel = 0
+# voorlopig lidnummer
+lidNummer = 3
 
 # function test database connection
 def toon_database_stadion():
@@ -98,14 +111,11 @@ def keuze_stoel(value_rij):
     optionsbox = OptionMenu(ticket, stoel_keuze, *options_stoel,command=bevestig_keuze_stoel)
     optionsbox.place(relx="0.4", rely="0.55")
 
+# changes the chosen parameter value_stoel to the global variabele var_stoel for the get_ticket function
 def bevestig_keuze_stoel(value_stoel):
-    # changes the chosen parameter value_stoel to the global variabele var_stoel for the order function and print test
     global var_stoel
     var_stoel = value_stoel
 
-# restart/clears the entry's : niet in gebruik
-def clear():
-    ticket.destroy()
 
 # function gets the ticket price and print
 def get_ticket():
@@ -137,9 +147,15 @@ def get_ticket():
                     text_MsgBox = "Ticket "+var_tribune+str(var_rij)+str(var_stoel)+" bestellen"
                     MsgBox = messagebox.askquestion(text_MsgBox, "Bent u zeker ?")
                     if MsgBox == 'yes':
-                        # send the ticketorder to the db
+                        # sends the ticketorder to the table stadion
                         query = "UPDATE stadion SET reserved = 'Ja' WHERE tribune =%s and rij=%s and stoel=%s"
                         mycursor.execute(query, (var_tribune, var_rij, var_stoel))
+                        # Inserts the Plaats_ID x[1] and lidNumber_ID. in the tabel  reservatie
+                        print("Lidnummer en ticketid: ", lidNummer, x[0])
+                        query = "INSERT INTO reservatie (lidNummer, plaatsID) VALUES (%s,%s)"
+
+                        val = [lidNummer, x[0]]
+                        mycursor.execute(query, val)
                         print("Ticket: ",var_tribune, var_rij, var_stoel," is besteld")
                         db.commit()
 
@@ -157,8 +173,10 @@ ticket.grid_rowconfigure(0, weight=1)
 ticket.grid_columnconfigure(0, weight=1)
 
 # Title
-L_Title = Label(ticket, text="FC Syntra - Ticket", fg='White', bg='DodgerBlue2', font=('Helvetica', 50))
+header = "FC Syntra - Ticket - "+"Lidnummer: "+str(lidNummer)
+L_Title = Label(ticket, text=header, fg='White', bg='DodgerBlue2', font=('Helvetica', 30))
 L_Title.pack(pady=20)
+
 
 # canvas for lines
 my_canvas = Canvas(ticket, width=3000, height=1000, background="DodgerBlue3")
@@ -177,15 +195,12 @@ stadion = Image.open("stadion.png")
 resized = stadion.resize((450, 280), Image.ANTIALIAS)
 new_stadion = ImageTk.PhotoImage(resized)
 new_stadion_label = Label(ticket, image=new_stadion, bg="DodgerBlue3")
-new_stadion_label.place(x=800, y=270)
+new_stadion_label.place(relx=0.62, rely=0.36)
 
 
 bestel = Button(ticket, text="Bestel ticket: ", width="20", font=('Helvetica',9), command=get_ticket)
 bestel.place(relx="0.1", rely="0.75")
 
-# #clearbutton not in use
-# clearbtn = Button(ticket, text="Clear", width="12",font=('Helvetica',9), command=clear)
-# clearbtn.place(relx="0.1", rely="0.85")
 
 # Ticketprice frame
 frame = Frame(ticket, width=200, height=30, relief="groove", borderwidth=2)
@@ -198,9 +213,3 @@ keuze_tribune()
 
 ticket.mainloop()
 
-# optional spinbox for number off tickets not in use
-# self.nr_tickets = Label(window, text="Aantal tickets (max. 4 st.)")
-# self.nr_tickets.config(bg="DodgerBlue3", fg="white")
-# self.nr_tickets.place(relx="0.1", rely="0.65")
-# self.nr_tickets_entry = Spinbox(window, from_=0, to=4, width="5")
-# self.nr_tickets_entry.place(relx="0.4", rely="0.65")
