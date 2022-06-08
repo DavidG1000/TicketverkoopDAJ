@@ -1,19 +1,13 @@
 # ############################## TICKET PAGE ###################################### #
 # This page is the ticket page from the website FC SYNTRA                           #
-# In this GUI supporters can bye stadion-tickets. Tickets are logged in a database  #
-# Members/supporters can make a selection on tribune, row and chairs.               #
+# In this GUI supporters can buy stadion-tickets. Tickets are logged in a database  #
+# Supporters can make a selection on tribune, row and chairs.                       #
 # Only free chairs are read-in from the db and visualised.                          #
 # ################################################################################# #
 
 # get tkinter module
-import tkinter
 from tkinter import *
 from tkinter import messagebox
-
-
-#from main_login_page import get_id_supp
-#print(get_id_supp())
-
 # get image module
 from PIL import ImageTk, Image
 
@@ -28,14 +22,26 @@ db = mysql.connector.connect(
 mycursor = db.cursor()
 
 # declare lists/variables
+naam = ""
 options_tribune = []
 options_rij = []
 options_stoel = []
 var_tribune = ""
 var_rij = 0
 var_stoel = 0
-# voorlopig lidnummer
-lidNummer = 3
+
+# gets the member-number from the lidn-log.txt file
+f = open('Lidnr_log.txt','r')
+lidNummer = int(f.read())
+f.close()
+
+# gets the member-name from the databank
+query = "SELECT voornaam,achternaam FROM leden WHERE lidNummer =%s"
+lid = (lidNummer,)
+mycursor.execute(query, lid)
+myresult = mycursor.fetchall()
+for x in myresult:
+    naam = x[0] + " " + x[1]
 
 # function test database connection
 def toon_database_stadion():
@@ -60,7 +66,7 @@ def keuze_tribune():
 
     # settings optionmenu tribune and command
     tribune_keuze = StringVar()
-    tribune_keuze.set("Tribune...")
+    tribune_keuze.set("Tribune")
     optionsbox = OptionMenu(ticket, tribune_keuze, *options_tribune,
                             command=keuze_rij) # returns the chosen parameter value_tribune and run function keuze_rij
     optionsbox.place(relx="0.4", rely="0.35")
@@ -82,10 +88,10 @@ def keuze_rij(value_tribune):
     rij.place(relx="0.1", rely="0.45")
 
     # settings optionbox row and command
-    rij_keuze = tkinter.StringVar(ticket)
+    rij_keuze = StringVar()
     rij_keuze.set(options_rij[0])
     optionsbox = OptionMenu(ticket, rij_keuze, *options_rij,
-                            command=keuze_stoel) # returns the chosen parameter value_rij and run funct. keuze_zitplaats
+                            command=keuze_stoel) # returns the chosen parameter value_rij and run funct. keuze_stoel
     optionsbox.place(relx="0.4", rely="0.45")
 
 # function choose chair
@@ -147,17 +153,21 @@ def get_ticket():
                     text_MsgBox = "Ticket "+var_tribune+str(var_rij)+str(var_stoel)+" bestellen"
                     MsgBox = messagebox.askquestion(text_MsgBox, "Bent u zeker ?")
                     if MsgBox == 'yes':
-                        # sends the ticketorder to the table stadion
-                        query = "UPDATE stadion SET reserved = 'Ja' WHERE tribune =%s and rij=%s and stoel=%s"
-                        mycursor.execute(query, (var_tribune, var_rij, var_stoel))
-                        # Inserts the Plaats_ID x[1] and lidNumber_ID. in the tabel  reservatie
-                        print("Lidnummer en ticketid: ", lidNummer, x[0])
-                        query = "INSERT INTO reservatie (lidNummer, plaatsID) VALUES (%s,%s)"
+                        # checks if a member is logged-in...if not raises an error (protects databank)
+                        if naam == "":
+                            messagebox.showerror(title="Fout", message="Er is geen lid aangemeld.")
+                        else:
+                            # sends the ticketorder to the table stadion
+                            query = "UPDATE stadion SET reserved = 'Ja' WHERE tribune =%s and rij=%s and stoel=%s"
+                            mycursor.execute(query, (var_tribune, var_rij, var_stoel))
+                            # Inserts the Plaats_ID x[1] and lidNumber_ID. in the tabel  reservatie
+                            print("Lidnummer en ticketid: ", lidNummer, x[0])
+                            query = "INSERT INTO reservatie (lidNummer, plaatsID) VALUES (%s,%s)"
+                            val = [lidNummer, x[0]]
+                            mycursor.execute(query, val)
+                            print("Ticket: ",var_tribune, var_rij, var_stoel," is besteld")
+                            db.commit()
 
-                        val = [lidNummer, x[0]]
-                        mycursor.execute(query, val)
-                        print("Ticket: ",var_tribune, var_rij, var_stoel," is besteld")
-                        db.commit()
 
     # messagebox foutmelding
     except ValueError:
@@ -172,17 +182,22 @@ ticket.config(bg='DodgerBlue2')
 ticket.grid_rowconfigure(0, weight=1)
 ticket.grid_columnconfigure(0, weight=1)
 
-# Title
-header = "FC Syntra - Ticket - "+"Lidnummer: "+str(lidNummer)
-L_Title = Label(ticket, text=header, fg='White', bg='DodgerBlue2', font=('Helvetica', 30))
+# print title
+header1 = "FC Syntra - Ticket"
+L_Title = Label(ticket, text=header1, fg='White', bg='DodgerBlue2', font=('Helvetica', 30))
 L_Title.pack(pady=20)
+
+# print member-name
+header2 = "Lid: "+naam
+M_Title = Label(ticket, text=header2, fg='White', bg='DodgerBlue2', font=('Helvetica', 20))
+M_Title.pack(pady=1)
 
 
 # canvas for lines
-my_canvas = Canvas(ticket, width=3000, height=1000, background="DodgerBlue3")
+my_canvas = Canvas(ticket, width=3000, height=420, background="DodgerBlue3")
 my_canvas.grid_rowconfigure(0, weight=1)
 my_canvas.grid_columnconfigure(0, weight=1)
-my_canvas.pack(padx=5, pady=60
+my_canvas.pack(padx=5, pady=40
                )
 
 # lines in the canvas with startingpoint x-as, startingpoint y-as, endpoint x-as, length, color and width
@@ -202,11 +217,15 @@ bestel = Button(ticket, text="Bestel ticket: ", width="20", font=('Helvetica',9)
 bestel.place(relx="0.1", rely="0.75")
 
 
-# Ticketprice frame
+# Ticketprice frame = answer
 frame = Frame(ticket, width=200, height=30, relief="groove", borderwidth=2)
 frame.place(relx="0.4", rely="0.745")
 answer = Label(frame, text="")
 answer.place(relx="0.10", rely="0.10")
+
+exit = Button(ticket, text="Exit ", width="10", font=('Helvetica', 9),command=ticket.destroy)
+exit.place(relx="0.90", rely="0.90")
+
 
 # start program
 keuze_tribune()
